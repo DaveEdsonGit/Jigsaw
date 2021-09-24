@@ -2,6 +2,8 @@
 
 // part of the puzzle peice
 type Piece = {
+    solvedX: number;
+    solvedY: number;    
     currentX: number;
     currentY: number;
     pieceWidth: number;
@@ -12,9 +14,16 @@ type Piece = {
     pictureHeight: number
 };
 
-const c_gridX = 4;
-const c_gridY = 4;
+const c_gridX: number = 4;
+const c_gridY: number = 4;
 const c_imageFilename = "TicTac.png";
+
+export enum Results {
+    Solved,
+    Unsolved
+}
+
+export type ResultCallback = (result:Results) => void;
 
 export class PuzzlePieces
 {
@@ -30,14 +39,16 @@ export class PuzzlePieces
     private activePiece: Piece | undefined;
     private picture:HTMLImageElement | undefined; 
     private canvas: HTMLCanvasElement | undefined;
+    private resultCallback: ResultCallback | undefined;
 
     // If the user clicks on somewhere that's not
     // a peice, then we want to ignore the mouse
     // moves until the user releases the mouse button
     private ignoreUntilReset: boolean = false;    
 
-    constructor(canvas: HTMLCanvasElement)
+    constructor(canvas: HTMLCanvasElement, resultCallback: ResultCallback)
     {
+        this.resultCallback = resultCallback;
         this.canvas = canvas;
         this.picture = new Image();
         this.picture.onload = () => {
@@ -69,6 +80,8 @@ export class PuzzlePieces
                 var x = i * pieceWidth;
                 var y = j * pieceHeight;
                 this.pieces.push({
+                    solvedX: x,
+                    solvedY: y,
                     currentX: x,
                     currentY: y,
                     pieceWidth: pieceWidth,
@@ -80,6 +93,7 @@ export class PuzzlePieces
                 });
             }
         }
+        this.updateSolvedStatus();        
     }
 
     private wholeRandomNumber(min: number, max: number) 
@@ -89,8 +103,12 @@ export class PuzzlePieces
 
     public unScramblePieces()
     {
-        this.buildPieces();
+        this.pieces.forEach(piece => {
+            piece.currentX = piece.solvedX;
+            piece.currentY = piece.solvedY;            
+        });
         this.drawPiecesToCanvas();
+        this.updateSolvedStatus();        
     }
 
     public scramblePieces()
@@ -100,12 +118,14 @@ export class PuzzlePieces
         {
             const pieceIndexToMove = this.wholeRandomNumber(0, scrambleCount-2);
             const piece = this.pieces[pieceIndexToMove];
+            this.pieces.splice(pieceIndexToMove, 1);
+            this.pieces.push(piece);
             piece.currentX = this.wholeRandomNumber(0, this.canvas!.width-piece.pieceWidth);
             piece.currentY = this.wholeRandomNumber(0, this.canvas!.height-piece.pieceHeight);
-            this.pieces.slice(pieceIndexToMove, 1);
-            this.pieces.push(piece);
+
         }
         this.drawPiecesToCanvas();        
+        this.updateSolvedStatus();        
     }
 
     public drawPiecesToCanvas()
@@ -153,6 +173,7 @@ export class PuzzlePieces
                             this.lastX = newX;
                             this.lastY = newY;
                             this.activePiece = piece;
+
                             this.pieces.splice(i, 1);                        
                             this.pieces.push(piece);                                                
                             break;
@@ -190,8 +211,63 @@ export class PuzzlePieces
         else
         {
             // The mouse button is not down
-            this.resetPieceMove();
+            if (this.activePiece !== undefined)
+            {
+                // The user was dragging a piece. Let's snap it into
+                // the nearest position. After playing around for a while,
+                // it felt the most natural to use the current mouse pointer
+                // position
+                const gridX = Math.min(Math.max(0, Math.floor(newX /  this.activePiece.pieceWidth)), c_gridX-1);
+                const gridY = Math.min(Math.max(0, Math.floor(newY /  this.activePiece.pieceHeight)), c_gridY-1);
+                this.activePiece.currentX = gridX * this.activePiece.pieceWidth;
+                this.activePiece.currentY = gridY * this.activePiece.pieceHeight;
+
+                // Check for multiple pieces in the spot, if so, shift this one. This
+                // needs to be done until resolved.
+                // We will try to shift towards the center, so grid* values for first
+                // half of range go positive, otherwise negative
+                const shiftX = (this.activePiece.pieceWidth / c_gridX) * ((gridX >= c_gridX / 2) ? -1 : 1);
+                const shiftY = (this.activePiece.pieceHeight / c_gridY) * ((gridY >= c_gridY / 2) ? -1 : 1);                
+                while (this.numberOfPiecesAtPosition(this.activePiece.currentX, this.activePiece.currentY) > 1)
+                {
+                    this.activePiece.currentX += shiftX;
+                    this.activePiece.currentY += shiftY;                    
+                }
+
+                this.drawPiecesToCanvas();                    
+                this.resetPieceMove();
+                this.updateSolvedStatus();
+            }
         }
+    }
+
+    numberOfPiecesAtPosition(x: number, y: number) : number
+    {
+        var result = 0;
+
+        this.pieces.forEach(piece => {
+            if (piece.currentX == x && piece.currentY == y)
+            {
+                result++;
+            }
+        });
+
+        return result;
+    }
+
+    updateSolvedStatus()
+    {
+        var result = Results.Solved;
+
+        this.pieces.forEach(piece => {
+            if (piece.currentX !== piece.solvedX || piece.currentY !== piece.solvedY)
+            {
+                result = Results.Unsolved;
+                return;
+            }
+        });
+
+        this.resultCallback!(result);
     }    
 
     resetPieceMove()

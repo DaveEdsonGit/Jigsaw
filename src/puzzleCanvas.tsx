@@ -1,10 +1,12 @@
 import { Component, createRef } from 'react';
 import { Button } from 'rsuite';
-import PuzzlePieces from './puzzlePieces';
+import PuzzlePieces, { Results } from './puzzlePieces';
 import './rsuite/rsuite-default.css'
 
 type PuzzleCanvasProps = {};
-type PuzzleCanvasState = {};
+type PuzzleCanvasState = {
+    solved: boolean | undefined
+};
 
 const c_canvasWidth = 640;
 const c_canvasHeight = 480;
@@ -14,13 +16,24 @@ export class PuzzleCanvas extends Component<PuzzleCanvasProps, PuzzleCanvasState
     private canvasRef = createRef<HTMLCanvasElement>(); 
     private pieces: PuzzlePieces | undefined;
 
+    state: PuzzleCanvasState =
+    {
+        solved: undefined
+    };
+
+    constructor(props: PuzzleCanvasProps)
+    {
+        super(props);
+        this.onResults = this.onResults.bind(this);
+    }
+
     componentDidMount()
     {
         // Once render() was called, load the picture and set up the model
         var canvas = this.canvasRef.current;
         if (canvas !== undefined)
         {
-            this.pieces = new PuzzlePieces(canvas!);
+            this.pieces = new PuzzlePieces(canvas!, this.onResults);
         }
     }
 
@@ -42,6 +55,11 @@ export class PuzzleCanvas extends Component<PuzzleCanvasProps, PuzzleCanvasState
         this.pieces!.scramblePieces();
     }
 
+    onResults (result:Results)
+    {
+        this.setState({ solved: result === Results.Solved });
+    }
+
     render()
     {
         return (
@@ -54,6 +72,13 @@ export class PuzzleCanvas extends Component<PuzzleCanvasProps, PuzzleCanvasState
                     onMouseDown={(e) => {this.tryMovePiece(e.nativeEvent)}}                    
                 />
                 <br />
+                { this.state.solved !== undefined
+                    ? this.state.solved!
+                        ? "Solved"
+                        : "Unsolved"
+                    : "Waiting"
+                }
+                <br />                
                 <Button onClick={() => this.solve()} appearance="primary" style={{ margin: 4 }}>Show Solved</Button>
                 <Button onClick={() => this.scramble()} appearance="primary" style={{ margin: 4 }}>Scramble</Button>                
             </div>
