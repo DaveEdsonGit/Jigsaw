@@ -1,6 +1,6 @@
 import { Component, createRef } from 'react';
 import { Button } from 'rsuite';
-import PuzzlePieces from './puzzlePeices';
+import PuzzlePieces from './puzzlePieces';
 import './rsuite/rsuite-default.css'
 
 type PuzzleCanvasProps = {};
@@ -24,12 +24,12 @@ export class PuzzleCanvas extends Component<PuzzleCanvasProps, PuzzleCanvasState
         }
     }
 
-    tryMovePeice(e: MouseEvent) 
+    tryMovePiece(e: MouseEvent) 
     {
         const leftMouseButtonPressed = (e.buttons === 1);
         const x = e.offsetX; 
         const y = e.offsetY;
-        this.pieces!.tryMovePeice(x, y, leftMouseButtonPressed); 
+        this.pieces!.tryMovePiece(x, y, leftMouseButtonPressed); 
     }
 
     solve()
@@ -50,8 +50,8 @@ export class PuzzleCanvas extends Component<PuzzleCanvasProps, PuzzleCanvasState
                     ref={this.canvasRef}
                     width={c_canvasWidth} height={c_canvasHeight}
                     style={{"border" : "1px solid rgb(255,0,0)"}}
-                    onMouseMove={(e) => {this.tryMovePeice(e.nativeEvent)}}
-                    onMouseDown={(e) => {this.tryMovePeice(e.nativeEvent)}}                    
+                    onMouseMove={(e) => {this.tryMovePiece(e.nativeEvent)}}
+                    onMouseDown={(e) => {this.tryMovePiece(e.nativeEvent)}}                    
                 />
                 <br />
                 <Button onClick={() => this.solve()} appearance="primary" style={{ margin: 4 }}>Show Solved</Button>

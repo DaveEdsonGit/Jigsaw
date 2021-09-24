@@ -2,10 +2,10 @@
 
 // part of the puzzle peice
 type Piece = {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+    currentX: number;
+    currentY: number;
+    pieceWidth: number;
+    pieceHeight: number;
     pictureX: number,
     pictureY: number,
     pictureWidth: number,
@@ -27,7 +27,7 @@ export class PuzzlePieces
     // activePeice is the peice the user clicked on
     private lastX: number | undefined;
     private lastY: number | undefined;    
-    private activePeice: Piece | undefined;
+    private activePiece: Piece | undefined;
     private picture:HTMLImageElement | undefined; 
     private canvas: HTMLCanvasElement | undefined;
 
@@ -43,7 +43,7 @@ export class PuzzlePieces
         this.picture.onload = () => {
             console.log('Loaded the Picture');
             this.buildPieces();
-            this.drawPeicesToCanvas();
+            this.drawPiecesToCanvas();
         };
         this.picture.onerror = (ev) => {
             console.log('Error:');
@@ -56,9 +56,8 @@ export class PuzzlePieces
 
     private buildPieces()
     {
-        var width = this.canvas!.width / c_gridX;
-        var height = this.canvas!.height / c_gridY; 
-
+        var pieceWidth = this.canvas!.width / c_gridX;
+        var pieceHeight = this.canvas!.height / c_gridY; 
         var pictureWidth = this.picture!.width / c_gridX;
         var pictureHeight = this.picture!.height / c_gridY; 
 
@@ -67,13 +66,13 @@ export class PuzzlePieces
         {
             for (var j = 0; j < c_gridY; j++)
             {
-                var x = i * width;
-                var y = j * height;
+                var x = i * pieceWidth;
+                var y = j * pieceHeight;
                 this.pieces.push({
-                    x: x,
-                    y: y,
-                    width: width,
-                    height: height,
+                    currentX: x,
+                    currentY: y,
+                    pieceWidth: pieceWidth,
+                    pieceHeight: pieceHeight,
                     pictureX: i * pictureWidth,
                     pictureY: j * pictureHeight,
                     pictureWidth: pictureWidth,
@@ -83,7 +82,7 @@ export class PuzzlePieces
         }
     }
 
-    private randomNumber(min: number, max: number) 
+    private wholeRandomNumber(min: number, max: number) 
     { 
         return Math.floor(Math.random() * (max - min) + min);
     } 
@@ -91,7 +90,7 @@ export class PuzzlePieces
     public unScramblePieces()
     {
         this.buildPieces();
-        this.drawPeicesToCanvas();
+        this.drawPiecesToCanvas();
     }
 
     public scramblePieces()
@@ -99,17 +98,17 @@ export class PuzzlePieces
         const scrambleCount = this.pieces.length;
         for (var i = 0; i < scrambleCount; i++)
         {
-            const pieceIndexToMove = this.randomNumber(0, scrambleCount-2);
+            const pieceIndexToMove = this.wholeRandomNumber(0, scrambleCount-2);
             const piece = this.pieces[pieceIndexToMove];
-            piece.x = this.randomNumber(0, this.canvas!.width-piece.width);
-            piece.y = this.randomNumber(0, this.canvas!.height-piece.height);
+            piece.currentX = this.wholeRandomNumber(0, this.canvas!.width-piece.pieceWidth);
+            piece.currentY = this.wholeRandomNumber(0, this.canvas!.height-piece.pieceHeight);
             this.pieces.slice(pieceIndexToMove, 1);
             this.pieces.push(piece);
         }
-        this.drawPeicesToCanvas();        
+        this.drawPiecesToCanvas();        
     }
 
-    public drawPeicesToCanvas()
+    public drawPiecesToCanvas()
     {
         var ctx = this.canvas!.getContext("2d");
         if (ctx !== undefined)
@@ -118,18 +117,18 @@ export class PuzzlePieces
             ctx!.fillRect(0, 0, ctx!.canvas.width, ctx!.canvas.height);
 
             // Drawing in order of the array handles z-order nicely
-            this.pieces.forEach(peice => {
+            this.pieces.forEach(piece => {
                 ctx!.drawImage(
                     this.picture!, 
-                    peice.pictureX, peice.pictureY, peice.pictureWidth, peice.pictureHeight,
-                    peice.x, peice.y, peice.width, peice.height);
+                    piece.pictureX, piece.pictureY, piece.pictureWidth, piece.pictureHeight,
+                    piece.currentX, piece.currentY, piece.pieceWidth, piece.pieceHeight);
             });
         }
     }
 
-    public tryMovePeice(x: number, y: number, leftButtonDown: boolean) 
+    public tryMovePiece(newX: number, newY: number, dragging: boolean) 
     {
-        if (leftButtonDown)
+        if (dragging)
         {
             // if left button is pressed            
             if (!this.ignoreUntilReset)
@@ -137,7 +136,7 @@ export class PuzzlePieces
                 // if the user has not clicked on deadspace and
                 // still has the mouse button down
 
-                if ((this.lastX === undefined) || (this.lastY === undefined) || (this.activePeice === undefined))
+                if ((this.lastX === undefined) || (this.lastY === undefined) || (this.activePiece === undefined))
                 {
                     // User started the click, find which peice
 
@@ -145,21 +144,21 @@ export class PuzzlePieces
                     // when determining which peice was clicked
                     for (var i = this.pieces.length-1; i >= 0; i--)
                     {
-                        var peice = this.pieces[i];
-                        if (x >= peice.x && x < (peice.x + peice.width) && y >= peice.y && y < (peice.y + peice.height))
+                        var piece = this.pieces[i];
+                        if (newX >= piece.currentX && newX < (piece.currentX + piece.pieceWidth) && newY >= piece.currentY && newY < (piece.currentY + piece.pieceHeight))
                         {
                             // Woot. User clicked on a peice. Set the last*
                             // values, and the active peice. Then, move the active
                             // peice to end of the array to change the z-order
-                            this.lastX = x;
-                            this.lastY = y;
-                            this.activePeice = peice;
+                            this.lastX = newX;
+                            this.lastY = newY;
+                            this.activePiece = piece;
                             this.pieces.splice(i, 1);                        
-                            this.pieces.push(peice);                                                
+                            this.pieces.push(piece);                                                
                             break;
                         }
                     }
-                    if (this.activePeice === undefined)
+                    if (this.activePiece === undefined)
                     {
                         // User clicked on a part of the canvas that doesn't
                         // have a peice. So we need to ignore all future mouse
@@ -173,33 +172,33 @@ export class PuzzlePieces
                     // Figure out the deltas against the last* values, and adjust
                     // the peice's position. Afterwards, update the last* values
                     // to reflect the new mouse position
-                    var dx = x - this.lastX;
-                    var dy = y - this.lastY;
-                    this.lastX = x;
-                    this.lastY = y;
-                    this.activePeice.x += dx;
-                    this.activePeice.y += dy; 
+                    var dx = newX - this.lastX;
+                    var dy = newY - this.lastY;
+                    this.lastX = newX;
+                    this.lastY = newY;
+                    this.activePiece.currentX += dx;
+                    this.activePiece.currentY += dy; 
                 }
             }
             // Even on initial click we want to redraw, since the z-order has
             // changed. Only if we clicked on white space is there nothing to do
             if (!this.ignoreUntilReset)
             {
-                this.drawPeicesToCanvas();
+                this.drawPiecesToCanvas();
             }
         }
         else
         {
             // The mouse button is not down
-            this.resetPeiceMove();
+            this.resetPieceMove();
         }
     }    
 
-    resetPeiceMove()
+    resetPieceMove()
     {
         this.lastX = undefined;
         this.lastY = undefined;        
-        this.activePeice = undefined;
+        this.activePiece = undefined;
         this.ignoreUntilReset = false;
     }    
 }
