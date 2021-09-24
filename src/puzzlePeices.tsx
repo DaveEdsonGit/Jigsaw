@@ -1,17 +1,20 @@
 // In future iterations, color will be replaced with an image of the
+
 // part of the puzzle peice
 type Piece = {
     x: number;
     y: number;
     width: number;
     height: number;
-    color: string;
+    pictureX: number,
+    pictureY: number,
+    pictureWidth: number,
+    pictureHeight: number
 };
 
-const c_canvasWidth = 640;
-const c_canvasHeight = 480;
-const c_gridX = 8;
-const c_gridY = 8;
+const c_gridX = 4;
+const c_gridY = 4;
+const c_imageFilename = "TicTac.png";
 
 export class PuzzlePieces
 {
@@ -25,55 +28,106 @@ export class PuzzlePieces
     private lastX: number | undefined;
     private lastY: number | undefined;    
     private activePeice: Piece | undefined;
+    private picture:HTMLImageElement | undefined; 
+    private canvas: HTMLCanvasElement | undefined;
 
     // If the user clicks on somewhere that's not
     // a peice, then we want to ignore the mouse
     // moves until the user releases the mouse button
     private ignoreUntilReset: boolean = false;    
 
-    constructor()
+    constructor(canvas: HTMLCanvasElement)
     {
-        var width = c_canvasWidth / c_gridX;
-        var height = c_canvasHeight / c_gridY; 
+        this.canvas = canvas;
+        this.picture = new Image();
+        this.picture.onload = () => {
+            console.log('Loaded the Picture');
+            this.buildPieces();
+            this.drawPeicesToCanvas();
+        };
+        this.picture.onerror = (ev) => {
+            console.log('Error:');
+            console.log(ev);            
+        };
+        var srcPath = c_imageFilename;
+        this.picture.src = srcPath;
+        console.log(`Loading picture at [${srcPath}]`);
+    }
 
-        // Generate the peices, using a specially designed
-        // example of lameness to come up with some colors.
+    private buildPieces()
+    {
+        var width = this.canvas!.width / c_gridX;
+        var height = this.canvas!.height / c_gridY; 
+
+        var pictureWidth = this.picture!.width / c_gridX;
+        var pictureHeight = this.picture!.height / c_gridY; 
+
+        this.pieces = [];
         for (var i = 0; i < c_gridX; i++)
         {
             for (var j = 0; j < c_gridY; j++)
             {
                 var x = i * width;
                 var y = j * height;
-                var color = `rgb(${64+191/(i+1)},${64+191/(j+1)},${64+191/(i+1)})`;
                 this.pieces.push({
                     x: x,
                     y: y,
                     width: width,
                     height: height,
-                    color: color
+                    pictureX: i * pictureWidth,
+                    pictureY: j * pictureHeight,
+                    pictureWidth: pictureWidth,
+                    pictureHeight: pictureHeight,
                 });
             }
         }
     }
 
-    public drawPeicesToConvas(canvas: HTMLCanvasElement | null)
+    private randomNumber(min: number, max: number) 
+    { 
+        return Math.floor(Math.random() * (max - min) + min);
+    } 
+
+    public unScramblePieces()
     {
-        var ctx = canvas?.getContext("2d");
+        this.buildPieces();
+        this.drawPeicesToCanvas();
+    }
+
+    public scramblePieces()
+    {
+        const scrambleCount = this.pieces.length;
+        for (var i = 0; i < scrambleCount; i++)
+        {
+            const pieceIndexToMove = this.randomNumber(0, scrambleCount-2);
+            const piece = this.pieces[pieceIndexToMove];
+            piece.x = this.randomNumber(0, this.canvas!.width-piece.width);
+            piece.y = this.randomNumber(0, this.canvas!.height-piece.height);
+            this.pieces.slice(pieceIndexToMove, 1);
+            this.pieces.push(piece);
+        }
+        this.drawPeicesToCanvas();        
+    }
+
+    public drawPeicesToCanvas()
+    {
+        var ctx = this.canvas!.getContext("2d");
         if (ctx !== undefined)
         { 
             ctx!.fillStyle = "white";
-            ctx!.fillRect(0, 0, c_canvasWidth, c_canvasHeight);
+            ctx!.fillRect(0, 0, ctx!.canvas.width, ctx!.canvas.height);
 
-            // Drawing in order of the array handles z-order
-            // nicely
+            // Drawing in order of the array handles z-order nicely
             this.pieces.forEach(peice => {
-                ctx!.fillStyle = peice.color;
-                ctx!.fillRect(peice.x, peice.y, peice.width, peice.height);
+                ctx!.drawImage(
+                    this.picture!, 
+                    peice.pictureX, peice.pictureY, peice.pictureWidth, peice.pictureHeight,
+                    peice.x, peice.y, peice.width, peice.height);
             });
         }
     }
 
-    public tryMovePeice(x: number, y: number, leftButtonDown: boolean) : boolean
+    public tryMovePeice(x: number, y: number, leftButtonDown: boolean) 
     {
         if (leftButtonDown)
         {
@@ -129,13 +183,15 @@ export class PuzzlePieces
             }
             // Even on initial click we want to redraw, since the z-order has
             // changed. Only if we clicked on white space is there nothing to do
-            return !this.ignoreUntilReset;            
+            if (!this.ignoreUntilReset)
+            {
+                this.drawPeicesToCanvas();
+            }
         }
         else
         {
             // The mouse button is not down
             this.resetPeiceMove();
-            return false;
         }
     }    
 

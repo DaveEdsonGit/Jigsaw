@@ -1,39 +1,27 @@
 import { Component, createRef } from 'react';
+import { Button } from 'rsuite';
 import PuzzlePieces from './puzzlePeices';
+import './rsuite/rsuite-default.css'
 
 type PuzzleCanvasProps = {};
 type PuzzleCanvasState = {};
 
-// In future iterations, color will be replaced with an image of the
-// part of the puzzle peice
-type Piece = {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    color: string;
-};
-
 const c_canvasWidth = 640;
 const c_canvasHeight = 480;
-const c_gridX = 8;
-const c_gridY = 8;
 
 export class PuzzleCanvas extends Component<PuzzleCanvasProps, PuzzleCanvasState>
 {
     private canvasRef = createRef<HTMLCanvasElement>(); 
-    private pieces: PuzzlePieces = new PuzzlePieces();
+    private pieces: PuzzlePieces | undefined;
 
     componentDidMount()
     {
-        // Once render() was called, draw the initial peices
-        this.drawPeices();
-    }
-
-    drawPeices()
-    {
+        // Once render() was called, load the picture and set up the model
         var canvas = this.canvasRef.current;
-        this.pieces.drawPeicesToConvas(canvas);
+        if (canvas !== undefined)
+        {
+            this.pieces = new PuzzlePieces(canvas!);
+        }
     }
 
     tryMovePeice(e: MouseEvent) 
@@ -41,11 +29,18 @@ export class PuzzleCanvas extends Component<PuzzleCanvasProps, PuzzleCanvasState
         const leftMouseButtonPressed = (e.buttons === 1);
         const x = e.offsetX; 
         const y = e.offsetY;
-        if (this.pieces.tryMovePeice(x, y, leftMouseButtonPressed)) 
-        {
-            this.drawPeices();            
-        }
-    }    
+        this.pieces!.tryMovePeice(x, y, leftMouseButtonPressed); 
+    }
+
+    solve()
+    {
+        this.pieces!.unScramblePieces();
+    }
+
+    scramble()
+    {
+        this.pieces!.scramblePieces();
+    }
 
     render()
     {
@@ -58,6 +53,9 @@ export class PuzzleCanvas extends Component<PuzzleCanvasProps, PuzzleCanvasState
                     onMouseMove={(e) => {this.tryMovePeice(e.nativeEvent)}}
                     onMouseDown={(e) => {this.tryMovePeice(e.nativeEvent)}}                    
                 />
+                <br />
+                <Button onClick={() => this.solve()} appearance="primary" style={{ margin: 4 }}>Show Solved</Button>
+                <Button onClick={() => this.scramble()} appearance="primary" style={{ margin: 4 }}>Scramble</Button>                
             </div>
         );
     }
